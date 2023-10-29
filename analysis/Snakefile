@@ -1,0 +1,974 @@
+###############################################################################
+# Parameters ##################################################################
+
+# Misc
+PVALUE_STARS = True
+
+# Colors
+colors4 = ["#0072b2", "#d55e00", "#f0e442", "#B11116"]
+colors3 = ["#0072b2", "#d55e00", "#f0e442"]
+colors2 = ["#999899", "#B11116"]
+
+###############################################################################
+# Scripts #####################################################################
+
+viz_diff = "viz_diff.R"
+filtering = "filtering.R"
+viz_model = "viz_model.R"
+viz_scores = "viz_scores.R"
+codon_usage = "codon_usage.R"
+dist_analysis = "dist_analysis.R"
+gnomad_ratios = "gnomad_ratios.R"
+calculate_maps = "calculate_maps.R"
+viz_scores_multi = "viz_scores_multi.R"
+annotate_with_mutability_bands = "annotate_with_mutability_bands.R"
+
+###############################################################################
+# Auto-generated input files ##################################################
+
+# Ratios of optimality-reducing variants
+ratios_table = "../files/mo2lo_gnomAD.tsv"
+
+# Database with codon usage statistics
+# TissueCoCoPUTs V1.2 01_13_2020: Codon usage per species derived from RefSeq assemblies
+codon_usage_db = "../files/Refseq_species.tsv"
+
+# All SNVs annotated with ClinVar
+all_clinvar_unprocessed = "../files/all_clinvar_unprocessed.tsv"
+
+# All variants grouped by their most severe consequence
+by_csq_unprocessed = "../files/by_csq.tsv"
+by_csq = "by_csq.tsv"
+
+# Mutability table (mutation rates, variant types, etc.)
+mutation_ht = "../files/mutation_ht.tsv"
+
+# Synonymous variants for calibration
+synonymous_by_mu = "../files/syn_vars_coding_by_mu.tsv"
+# Synonymous variants
+synonymous_by_codon = "../files/syn_vars_coding_by_codon_pair.tsv"
+# Synonymous variants annotated with homorepeats and MFE scores
+synonymous_homo_mfe = "../files/syn_vars_coding_homorepeats_MFE.tsv"
+# Synonymous variants annotated with CADD quantiles
+synonymous_cadd = "../files/syn_vars_cadd.tsv"
+# Synonymous variants annotated with synVep quantiles
+synonymous_synvep = "../files/syn_vars_synvep.tsv"
+# Synonymous variants in and outside of hotspot exons
+synonymous_hotspots = "../files/syn_vars_coding_hotspots.tsv"
+# Synonymous variants annotated with GERP scores
+synonymous_gerp = "../files/all_syn_coding_gerp.tsv"
+# Filtered synonymous variants annotated with SpliceAI scores
+synonymous_spliceai = "../files/syn_vars_spliceai.tsv"
+# Ungrouped filtered synonymous variants annotated with SpliceAI scores
+syn_vars_spliceai_max = "../files/syn_vars_spliceai_max.tsv"
+
+# Intronic variants for calibration
+intronic_by_mu = "../files/intronic_vars_by_mu.tsv"
+
+###############################################################################
+# External input files ########################################################
+
+# Codon Stability Coefficient (CSC) table
+csc = "../files/elife-45396-fig1-data2-v2.csv"
+# tRNA Adaptivity Index (tAI) table
+tai_xls = "../files/mmc2.xls"
+tai = "../files/mmc2.xlsx"
+
+###############################################################################
+# Temp files ##################################################################
+
+traps_syn_ClinicalSignificance_clinvar_scores = (
+    "traps_syn_ClinicalSignificance_clinvar.tsv"
+)
+maps_syn_ClinicalSignificance_clinvar_scores = (
+    "maps_syn_ClinicalSignificance_clinvar.tsv"
+)
+
+all_clinvar = "all_clinvar.tsv"
+syn_clinvar = "syn_clinvar.tsv"
+
+spliceai_DS_AG_traps_scores = "spliceai_DS_AG_traps.tsv"  # delta score (acceptor gain)
+spliceai_DS_AL_traps_scores = "spliceai_DS_AL_traps.tsv"  # delta score (acceptor loss)
+spliceai_DS_DG_traps_scores = "spliceai_DS_DG_traps.tsv"  # delta score (donor gain)
+spliceai_DS_DL_traps_scores = "spliceai_DS_DL_traps.tsv"  # delta score (donor loss)
+
+# TRAPS scores for synonymous variants in each CADD quartile
+CADD_quartile_TRAPS_scores = "CADD_quartiles_TRAPS.tsv"
+# TRAPS scores for synonymous variants in each synVep quartile
+synVep_quartile_TRAPS_scores = "synVep_quartiles_TRAPS.tsv"
+
+mutability_bands_MAPS_scores = "mutability_bands_MAPS.tsv"
+mutability_bands_TRAPS_scores = "mutability_bands_TRAPS.tsv"
+mutability_bands_inTRAPS_scores = "mutability_bands_inTRAPS.tsv"
+
+# MAPS scores for all major functional classes of SNVs
+maps_by_csq_scores = "all_csq_MAPS.tsv"
+# TRAPS scores for all major functional classes of SNVs
+traps_by_csq_scores = "all_csq_TRAPS.tsv"
+# Intronic MAPS scores for all major functional classes of SNVs
+inMAPS_by_csq_scores = "all_csq_inMAPS.tsv"
+# Intronic TRAPS scores for all major functional classes of SNVs
+inTRAPS_by_csq_scores = "all_csq_inTRAPS.tsv"
+
+# Synonymous variants annotated with mutability bands
+synonymous_by_codon_w_mut_bands = "syn_vars_coding_by_codon_pair_w_mut_bands.tsv"
+
+###############################################################################
+# Output files ################################################################
+
+spliceai_DS_AG_traps_plot = "spliceai_DS_AG_traps.pdf"  # delta score (acceptor gain)
+spliceai_DS_AL_traps_plot = "spliceai_DS_AL_traps.pdf"  # delta score (acceptor loss)
+spliceai_DS_DG_traps_plot = "spliceai_DS_DG_traps.pdf"  # delta score (donor gain)
+spliceai_DS_DL_traps_plot = "spliceai_DS_DL_traps.pdf"  # delta score (donor loss)
+
+# TRAPS difference between optimality-reducing and optimality-increasing variants
+TRAPS_by_optimality_plot = "TRAPS_by_optimality.pdf"
+
+# ClinVar's sSNVs by ClinicalSignificance (benign, pathogenic, VUSs); MAPS and TRAPS scores
+syn_clinvar_ClinicalSignificance_diff_maps_plot = (
+    "syn_clinvar_ClinicalSignificance_diff_maps.pdf"
+)
+syn_clinvar_ClinicalSignificance_diff_traps_plot = (
+    "syn_clinvar_ClinicalSignificance_diff_traps.pdf"
+)
+
+# Violin plot of GERP scores for optimality-reducing and optimality-increasing sSNVs in two-codon amino acids
+GERP_violin_opt_2c_plot = "GERP_violin_opt_2c.pdf"
+GERP_violin_opt_2c_tests = "GERP_violin_opt_2c.tex"
+
+mutability_bands_MAPS_plot = "mutability_bands_MAPS.pdf"
+mutability_bands_TRAPS_plot = "mutability_bands_TRAPS.pdf"
+mutability_bands_inTRAPS_plot = "mutability_bands_inTRAPS.pdf"
+
+# Synonymous MAPS
+model_fit_MAPS = "model_fit_MAPS.pdf"
+# Synonymous TRAPS
+model_fit_TRAPS = "model_fit_TRAPS.pdf"
+# Intronic MAPS
+model_fit_inMAPS = "model_fit_inMAPS.pdf"
+# Intronic TRAPS
+model_fit_inTRAPS = "model_fit_inTRAPS.pdf"
+
+# Percent of optimality-reducing variants in gnomAD
+gnomad_ratios_plot = "gnomad_ratios.pdf"
+# Codon usage bias in two-fold degenerate amino acids
+codon_usage_plot = "codon_usage.pdf"
+
+# TRAPS scores for synonymous variants in each CADD quartile
+CADD_quartile_TRAPS_plot = "CADD_quartiles_TRAPS.pdf"
+# TRAPS scores for synonymous variants in each synVep quartile
+synVep_quartile_TRAPS_plot = "synVep_quartiles_TRAPS.pdf"
+
+# TRAPS and MAPS scores for all major functional classes of SNVs
+scores2_by_csq_plot = "scores2_by_csq.pdf"
+# TRAPS and MAPS scores for all major functional classes of SNVs (plus intronic models)
+scores2_and_intronic_by_csq_plot = "scores2_and_intronic_by_csq.pdf"
+
+######################################################################
+
+
+rule all:
+    input:
+        # Figure 1
+        mutability_bands_MAPS_plot,
+        mutability_bands_TRAPS_plot,
+        mutability_bands_inTRAPS_plot,
+        # Figure S3
+        model_fit_MAPS,
+        model_fit_TRAPS,
+        # Figure 3
+        GERP_violin_opt_2c_plot,
+        # Figure 4
+        gnomad_ratios_plot,
+        codon_usage_plot,
+        # Figure 6
+        CADD_quartile_TRAPS_plot,
+        synVep_quartile_TRAPS_plot,
+        # Figure 7
+        spliceai_DS_AG_traps_plot,
+        spliceai_DS_AL_traps_plot,
+        spliceai_DS_DG_traps_plot,
+        spliceai_DS_DL_traps_plot,
+        # Figure S7
+        scores2_by_csq_plot,
+        # Misc
+        model_fit_inMAPS,
+        model_fit_inTRAPS,
+        scores2_and_intronic_by_csq_plot,
+        syn_clinvar_ClinicalSignificance_diff_maps_plot,
+        syn_clinvar_ClinicalSignificance_diff_traps_plot,
+
+
+###############################################################################
+
+# QC
+
+
+rule process_clinvar_variants:
+    input:
+        In=all_clinvar_unprocessed,
+    output:
+        Out=all_clinvar,
+    params:
+        min_coverage=30,
+        protein_coding=True,
+        variable="OriginSimple",
+        variable_value="germline",
+        add_essential_splice_cat=True,
+    script:
+        filtering
+
+
+rule select_synonymous_clinvar_variants:
+    input:
+        In=all_clinvar,
+    output:
+        Out=syn_clinvar,
+    params:
+        variable="worst_csq",
+        variable_value="synonymous_variant",
+        clinvar_remove_likely_categories=True,
+    script:
+        filtering
+
+
+rule process_by_csq_variants:
+    input:
+        In=by_csq_unprocessed,
+    output:
+        Out=by_csq,
+    params:
+        min_coverage=30,
+        protein_coding=True,
+        add_essential_splice_cat=True,
+    script:
+        filtering
+
+
+# Annotations
+
+
+rule annotate_with_mutability_bands:
+    input:
+        variants=synonymous_by_codon,
+    output:
+        annotated_variants=synonymous_by_codon_w_mut_bands,
+    script:
+        annotate_with_mutability_bands
+
+
+# MAPS/TRAPS calibration models
+
+
+rule model_fit_MAPS:
+    input:
+        mutation_ht=mutation_ht,
+        calibrate_on=synonymous_by_mu,
+    output:
+        plot=model_fit_MAPS,
+    params:
+        transformation="+",
+        legend_title="",
+        colors=colors3,
+        text_size=22,
+    script:
+        viz_model
+
+
+rule model_fit_TRAPS:
+    input:
+        mutation_ht=mutation_ht,
+        calibrate_on=synonymous_by_mu,
+    output:
+        plot=model_fit_TRAPS,
+    params:
+        transformation="sqrt",
+        legend_title="",
+        colors=colors3,
+        text_size=22,
+    script:
+        viz_model
+
+
+rule model_fit_inMAPS:
+    input:
+        mutation_ht=mutation_ht,
+        calibrate_on=intronic_by_mu,
+    output:
+        plot=model_fit_inMAPS,
+    params:
+        transformation="+",
+        legend_title="",
+        colors=colors3,
+        text_size=22,
+    script:
+        viz_model
+
+
+rule model_fit_inTRAPS:
+    input:
+        mutation_ht=mutation_ht,
+        calibrate_on=intronic_by_mu,
+    output:
+        plot=model_fit_inTRAPS,
+    params:
+        transformation="sqrt",
+        legend_title="",
+        colors=colors3,
+        text_size=22,
+    script:
+        viz_model
+
+
+# Mutability bands
+
+
+rule calculate_mutability_bands_MAPS:
+    input:
+        variants=synonymous_by_codon_w_mut_bands,
+        calibrate_on=synonymous_by_mu,
+    params:
+        extra="mutability_band",
+        transformation="+",
+    output:
+        scores=mutability_bands_MAPS_scores,
+    script:
+        calculate_maps
+
+
+rule calculate_mutability_bands_TRAPS:
+    input:
+        variants=synonymous_by_codon_w_mut_bands,
+        calibrate_on=synonymous_by_mu,
+    params:
+        extra="mutability_band",
+        transformation="sqrt",
+    output:
+        scores=mutability_bands_TRAPS_scores,
+    script:
+        calculate_maps
+
+
+rule calculate_mutability_bands_inTRAPS:
+    input:
+        variants=synonymous_by_codon_w_mut_bands,
+        calibrate_on=intronic_by_mu,
+    params:
+        extra="mutability_band",
+        transformation="sqrt",
+    output:
+        scores=mutability_bands_inTRAPS_scores,
+    script:
+        calculate_maps
+
+
+rule mutability_bands_MAPS_plot:
+    input:
+        scores=mutability_bands_MAPS_scores,
+    output:
+        plot=mutability_bands_MAPS_plot,
+    params:
+        xlab_angle=0,
+        aspect_ratio=0.7,
+        xlab_size=20,
+        ylim_min=-0.02,
+        ylim_max=0.1,
+        xlab="Mutability band",
+        xlab_labels=["Highest", "Higher", "Lower", "Lowest"],
+        new_xlab_labels=["Highest", "Higher", "Lower", "Lowest"],
+        xlab_vjust=0.5,
+        xlab_hjust=0.5,
+        reorder_xlab_by_score=False,
+        add_pvalues=True,
+        pvalue_stars=PVALUE_STARS,
+        pvalue_test="Welch",
+        bonferroni=True,
+        ylab="MAPS",
+        score_name="maps",
+    script:
+        viz_scores
+
+
+rule mutability_bands_TRAPS_plot:
+    input:
+        scores=mutability_bands_TRAPS_scores,
+    output:
+        plot=mutability_bands_TRAPS_plot,
+    params:
+        xlab_angle=0,
+        aspect_ratio=0.7,
+        xlab_size=20,
+        ylim_min=-0.02,
+        ylim_max=0.1,
+        xlab="Mutability band",
+        xlab_labels=["Highest", "Higher", "Lower", "Lowest"],
+        new_xlab_labels=["Highest", "Higher", "Lower", "Lowest"],
+        xlab_vjust=0.5,
+        xlab_hjust=0.5,
+        reorder_xlab_by_score=False,
+        add_pvalues=True,
+        pvalue_stars=PVALUE_STARS,
+        pvalue_test="Welch",
+        bonferroni=True,
+        ylab="TRAPS",
+        score_name="maps",
+    script:
+        viz_scores
+
+
+rule mutability_bands_inTRAPS_plot:
+    input:
+        scores=mutability_bands_inTRAPS_scores,
+    output:
+        plot=mutability_bands_inTRAPS_plot,
+    params:
+        xlab_angle=0,
+        aspect_ratio=0.7,
+        xlab_size=20,
+        ylim_min=-0.02,
+        ylim_max=0.1,
+        xlab="Mutability band",
+        xlab_labels=["Highest", "Higher", "Lower", "Lowest"],
+        new_xlab_labels=["Highest", "Higher", "Lower", "Lowest"],
+        xlab_vjust=0.5,
+        xlab_hjust=0.5,
+        reorder_xlab_by_score=False,
+        add_pvalues=True,
+        pvalue_stars=PVALUE_STARS,
+        pvalue_test="Welch",
+        bonferroni=True,
+        ylab="inTRAPS",
+        score_name="maps",
+    script:
+        viz_scores
+
+
+# CADD and synVep
+
+
+rule calculate_CADD_quartiles_TRAPS:
+    input:
+        variants=synonymous_cadd,
+        calibrate_on=synonymous_by_mu,
+    params:
+        extra="cadd_quartile",
+        transformation="sqrt",
+    output:
+        scores=CADD_quartile_TRAPS_scores,
+    script:
+        calculate_maps
+
+
+rule calculate_synVep_quartiles_TRAPS:
+    input:
+        variants=synonymous_synvep,
+        calibrate_on=synonymous_by_mu,
+    params:
+        extra="synvep_quartile",
+        transformation="sqrt",
+    output:
+        scores=synVep_quartile_TRAPS_scores,
+    script:
+        calculate_maps
+
+
+rule CADD_quartile_TRAPS_plot:
+    input:
+        scores=CADD_quartile_TRAPS_scores,
+    output:
+        plot=CADD_quartile_TRAPS_plot,
+    params:
+        reorder_xlab_by_score=False,
+        xlab_size=20,
+        add_pvalues=True,
+        pvalue_stars=PVALUE_STARS,
+        pvalue_test="Welch",
+        bonferroni=True,
+        ylab="TRAPS",
+        xlab="CADD quartile",
+        score_name="maps",
+        xlab_labels=["1", "2", "3", "4"],
+        new_xlab_labels=["0-25%", "25-50%", "50-75%", "75-100%"],
+    script:
+        viz_scores
+
+
+rule synVep_quartile_TRAPS_plot:
+    input:
+        scores=synVep_quartile_TRAPS_scores,
+    output:
+        plot=synVep_quartile_TRAPS_plot,
+    params:
+        reorder_xlab_by_score=False,
+        xlab_size=20,
+        add_pvalues=True,
+        pvalue_stars=PVALUE_STARS,
+        pvalue_test="Welch",
+        bonferroni=True,
+        ylab="TRAPS",
+        xlab="synVep quartile",
+        score_name="maps",
+        xlab_labels=["1", "2", "3", "4"],
+        new_xlab_labels=["0-25%", "25-50%", "50-75%", "75-100%"],
+    script:
+        viz_scores
+
+
+# GERP
+
+
+rule GERP_violin_opt_2c_plot:
+    input:
+        variants=synonymous_gerp,
+    params:
+        add_pvalues=True,
+        pvalue_stars=PVALUE_STARS,
+        bonferroni=True,
+        colors=colors2,
+    output:
+        plot=GERP_violin_opt_2c_plot,
+        tests=GERP_violin_opt_2c_tests,
+    script:
+        dist_analysis
+
+
+# MAPS and TRAPS for missense, LoF, etc.
+
+
+rule maps_by_csq_scores:
+    input:
+        variants=by_csq,
+        calibrate_on=synonymous_by_mu,
+    params:
+        extra="worst_csq",
+        transformation="+",
+    output:
+        scores=maps_by_csq_scores,
+    script:
+        calculate_maps
+
+
+rule traps_by_csq_scores:
+    input:
+        variants=by_csq,
+        calibrate_on=synonymous_by_mu,
+    params:
+        extra="worst_csq",
+        transformation="sqrt",
+        old_cols=["maps", "maps_sem", "maps_lconf", "maps_uconf"],
+        new_cols=["traps", "traps_sem", "traps_lconf", "traps_uconf"],
+    output:
+        scores=traps_by_csq_scores,
+    script:
+        calculate_maps
+
+
+rule scores2_by_csq_plot:
+    input:
+        scores=[traps_by_csq_scores, maps_by_csq_scores],
+    params:
+        model_labels=["maps", "traps"],
+        new_model_labels=["MAPS", "TRAPS"],
+        xlab_labels_set=[
+            "intron_variant",
+            "5_prime_UTR_variant",
+            "3_prime_UTR_variant",
+            "synonymous_variant",
+            "missense_variant",
+            "essential_splice",
+            "stop_gained",
+        ],
+        xlab_labels=[
+            "intron_variant",
+            "5_prime_UTR_variant",
+            "3_prime_UTR_variant",
+            "synonymous_variant",
+            "missense_variant",
+            "essential_splice",
+            "stop_gained",
+        ],
+        new_xlab_labels=[
+            "Intron",
+            "5'UTR",
+            "3'UTR",
+            "Synonymous",
+            "Missense",
+            "Essential splice",
+            "Nonsense",
+        ],
+        colors=colors2,
+        aspect_ratio=0.8,
+        text_size=20,
+        xlab_size=20,
+        point_size=0.8,
+        xlab="",
+        ylab="Selection score",
+        xlab_angle=30,
+        xlab_hjust=1,
+        xlab_vjust=1,
+        legend_title="",
+    output:
+        plot=scores2_by_csq_plot,
+    script:
+        viz_scores_multi
+
+
+# SpliceAI
+
+
+rule spliceai_DS_AG_traps_scores:
+    input:
+        variants=synonymous_spliceai,
+        calibrate_on=synonymous_by_mu,
+    params:
+        extra="DS_AG",
+        transformation="sqrt",
+    output:
+        scores=spliceai_DS_AG_traps_scores,
+    script:
+        calculate_maps
+
+
+rule spliceai_DS_AL_traps_scores:
+    input:
+        variants=synonymous_spliceai,
+        calibrate_on=synonymous_by_mu,
+    params:
+        extra="DS_AL",
+        transformation="sqrt",
+    output:
+        scores=spliceai_DS_AL_traps_scores,
+    script:
+        calculate_maps
+
+
+rule spliceai_DS_DG_traps_scores:
+    input:
+        variants=synonymous_spliceai,
+        calibrate_on=synonymous_by_mu,
+    params:
+        extra="DS_DG",
+        transformation="sqrt",
+    output:
+        scores=spliceai_DS_DG_traps_scores,
+    script:
+        calculate_maps
+
+
+rule spliceai_DS_DL_traps_scores:
+    input:
+        variants=synonymous_spliceai,
+        calibrate_on=synonymous_by_mu,
+    params:
+        extra="DS_DL",
+        transformation="sqrt",
+    output:
+        scores=spliceai_DS_DL_traps_scores,
+    script:
+        calculate_maps
+
+
+rule spliceai_DS_AG_traps_plot:
+    input:
+        scores=spliceai_DS_AG_traps_scores,
+    params:
+        ylim_min=-0.01,
+        ylim_max=0.22,
+        xlab_angle=0,
+        aspect_ratio=0.7,
+        xlab_size=20,
+        xlab="SpliceAI score",
+        xlab_labels=["0", "1"],
+        new_xlab_labels=["<0.5", ">0.5"],
+        xlab_vjust=0.5,
+        xlab_hjust=0.5,
+        reorder_xlab_by_score=False,
+        add_pvalues=True,
+        pvalue_stars=PVALUE_STARS,
+        pvalue_test="Welch",
+        bonferroni=True,
+        ylab="TRAPS",
+        score_name="maps",
+    output:
+        plot=spliceai_DS_AG_traps_plot,
+    script:
+        viz_scores
+
+
+rule spliceai_DS_AL_traps_plot:
+    input:
+        scores=spliceai_DS_AL_traps_scores,
+    params:
+        ylim_min=-0.01,
+        ylim_max=0.22,
+        xlab_angle=0,
+        aspect_ratio=0.7,
+        xlab_size=20,
+        xlab="SpliceAI score",
+        xlab_labels=["0", "1"],
+        new_xlab_labels=["<0.5", ">0.5"],
+        xlab_vjust=0.5,
+        xlab_hjust=0.5,
+        reorder_xlab_by_score=False,
+        add_pvalues=True,
+        pvalue_stars=PVALUE_STARS,
+        pvalue_test="Welch",
+        bonferroni=True,
+        ylab="TRAPS",
+        score_name="maps",
+    output:
+        plot=spliceai_DS_AL_traps_plot,
+    script:
+        viz_scores
+
+
+rule spliceai_DS_DG_traps_plot:
+    input:
+        scores=spliceai_DS_DG_traps_scores,
+    params:
+        ylim_min=-0.01,
+        ylim_max=0.22,
+        xlab_angle=0,
+        aspect_ratio=0.7,
+        xlab_size=20,
+        xlab="SpliceAI score",
+        xlab_labels=["0", "1"],
+        new_xlab_labels=["<0.5", ">0.5"],
+        xlab_vjust=0.5,
+        xlab_hjust=0.5,
+        reorder_xlab_by_score=False,
+        add_pvalues=True,
+        pvalue_stars=PVALUE_STARS,
+        pvalue_test="Welch",
+        bonferroni=True,
+        ylab="TRAPS",
+        score_name="maps",
+    output:
+        plot=spliceai_DS_DG_traps_plot,
+    script:
+        viz_scores
+
+
+rule spliceai_DS_DL_traps_plot:
+    input:
+        scores=spliceai_DS_DL_traps_scores,
+    params:
+        ylim_min=-0.01,
+        ylim_max=0.22,
+        xlab_angle=0,
+        aspect_ratio=0.7,
+        xlab_size=20,
+        xlab="SpliceAI score",
+        xlab_labels=["0", "1"],
+        new_xlab_labels=["<0.5", ">0.5"],
+        xlab_vjust=0.5,
+        xlab_hjust=0.5,
+        reorder_xlab_by_score=False,
+        add_pvalues=True,
+        pvalue_stars=PVALUE_STARS,
+        pvalue_test="Welch",
+        bonferroni=True,
+        ylab="TRAPS",
+        score_name="maps",
+    output:
+        plot=spliceai_DS_DL_traps_plot,
+    script:
+        viz_scores
+
+
+# ClinVar
+
+
+rule traps_syn_ClinicalSignificance_clinvar_scores:
+    input:
+        variants=syn_clinvar,
+        calibrate_on=synonymous_by_mu,
+    params:
+        extra="ClinicalSignificance",
+        transformation="sqrt",
+        old_cols=["maps", "maps_sem", "maps_lconf", "maps_uconf"],
+        new_cols=["traps", "traps_sem", "traps_lconf", "traps_uconf"],
+    output:
+        scores=traps_syn_ClinicalSignificance_clinvar_scores,
+    script:
+        calculate_maps
+
+
+rule maps_syn_ClinicalSignificance_clinvar_scores:
+    input:
+        variants=syn_clinvar,
+        calibrate_on=synonymous_by_mu,
+    params:
+        extra="ClinicalSignificance",
+        transformation="+",
+    output:
+        scores=maps_syn_ClinicalSignificance_clinvar_scores,
+    script:
+        calculate_maps
+
+
+rule syn_clinvar_ClinicalSignificance_diff_traps_plot:
+    input:
+        scores=traps_syn_ClinicalSignificance_clinvar_scores,
+    params:
+        xlab_angle=0,
+        aspect_ratio=0.7,
+        xlab_size=20,
+        xlab_labels_set=["All benign", "Uncertain significance", "All pathogenic"],
+        xlab_labels=["All benign", "Uncertain significance", "All pathogenic"],
+        new_xlab_labels=["All benign", "VUS", "All pathogenic"],
+        by="variable_value",
+        ref_group="All benign",
+        ylab="$TRAPS - TRAPS_{All\ benign}$",
+        score_name="traps",
+        point_size=0.1,
+        xlab_vjust=0.5,
+        xlab_hjust=0.5,
+        reorder_xlab_by_score=False,
+    output:
+        plot=syn_clinvar_ClinicalSignificance_diff_traps_plot,
+    script:
+        viz_diff
+
+
+rule syn_clinvar_ClinicalSignificance_diff_maps_plot:
+    input:
+        scores=maps_syn_ClinicalSignificance_clinvar_scores,
+    params:
+        xlab_angle=0,
+        aspect_ratio=0.7,
+        xlab_size=20,
+        xlab_labels_set=["All benign", "Uncertain significance", "All pathogenic"],
+        xlab_labels=["All benign", "Uncertain significance", "All pathogenic"],
+        new_xlab_labels=["All benign", "VUS", "All pathogenic"],
+        by="variable_value",
+        ref_group="All benign",
+        ylab="$MAPS - MAPS_{All\ benign}$",
+        score_name="maps",
+        point_size=0.1,
+        xlab_vjust=0.5,
+        xlab_hjust=0.5,
+        reorder_xlab_by_score=False,
+    output:
+        plot=syn_clinvar_ClinicalSignificance_diff_maps_plot,
+    script:
+        viz_diff
+
+
+# Comparison with intronic models
+
+
+rule inMAPS_by_csq_scores:
+    input:
+        variants=by_csq,
+        calibrate_on=intronic_by_mu,
+    params:
+        extra="worst_csq",
+        transformation="+",
+        old_cols=["maps", "maps_sem", "maps_lconf", "maps_uconf"],
+        new_cols=[
+            "maps_intronic",
+            "maps_intronic_sem",
+            "maps_intronic_lconf",
+            "maps_intronic_uconf",
+        ],
+    output:
+        scores=inMAPS_by_csq_scores,
+    script:
+        calculate_maps
+
+
+rule inTRAPS_by_csq_scores:
+    input:
+        variants=by_csq,
+        calibrate_on=intronic_by_mu,
+    params:
+        extra="worst_csq",
+        transformation="sqrt",
+        old_cols=["maps", "maps_sem", "maps_lconf", "maps_uconf"],
+        new_cols=[
+            "traps_intronic",
+            "traps_intronic_sem",
+            "traps_intronic_lconf",
+            "traps_intronic_uconf",
+        ],
+    output:
+        scores=inTRAPS_by_csq_scores,
+    script:
+        calculate_maps
+
+
+rule scores2_and_intronic_by_csq_plot:
+    input:
+        scores=[
+            traps_by_csq_scores,
+            maps_by_csq_scores,
+            inTRAPS_by_csq_scores,
+            inMAPS_by_csq_scores,
+        ],
+    params:
+        model_labels=["maps", "traps", "maps_intronic", "traps_intronic"],
+        new_model_labels=["MAPS", "TRAPS", "inMAPS", "inTRAPS"],
+        xlab_labels_set=[
+            "intron_variant",
+            "5_prime_UTR_variant",
+            "3_prime_UTR_variant",
+            "synonymous_variant",
+            "missense_variant",
+            "essential_splice",
+            "stop_gained",
+        ],
+        xlab_labels=[
+            "intron_variant",
+            "5_prime_UTR_variant",
+            "3_prime_UTR_variant",
+            "synonymous_variant",
+            "missense_variant",
+            "essential_splice",
+            "stop_gained",
+        ],
+        new_xlab_labels=[
+            "Intron",
+            "5'UTR",
+            "3'UTR",
+            "Synonymous",
+            "Missense",
+            "Essential splice",
+            "Nonsense",
+        ],
+        colors=colors4,
+        aspect_ratio=0.8,
+        text_size=20,
+        xlab_size=20,
+        point_size=0.8,
+        xlab="",
+        ylab="Selection score",
+        xlab_angle=30,
+        xlab_hjust=1,
+        xlab_vjust=1,
+        legend_title="",
+    output:
+        plot=scores2_and_intronic_by_csq_plot,
+    script:
+        viz_scores_multi
+
+
+# Ratios and codon usage
+
+
+rule gnomad_ratios:
+    input:
+        ratios_table=ratios_table,
+    output:
+        plot=gnomad_ratios_plot,
+    script:
+        gnomad_ratios
+
+
+rule codon_usage:
+    input:
+        codon_usage_db=codon_usage_db,
+    output:
+        plot=codon_usage_plot,
+    script:
+        codon_usage
