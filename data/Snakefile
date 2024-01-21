@@ -1,0 +1,485 @@
+from snakemake.remote.GS import RemoteProvider
+
+GS = RemoteProvider(stay_on_remote=True)
+
+###############################################################################
+#                                   Preamble                                  #
+###############################################################################
+
+# Mutability table
+mutation_ht = GS.remote(config["gcp_rootdir"] + "mutation_ht.tsv")
+
+# Filtered synonymous variants annotated with CADD scores
+syn_vars_cadd = GS.remote(config["gcp_rootdir"] + "syn_vars_cadd.tsv")
+
+# Filtered synonymous variants in 30% most constrained genes
+syn_vars_constrained = GS.remote(
+    config["gcp_rootdir"] + "syn_by_codon_pair_constrained30.tsv"
+)
+
+# Filtered synonymous variants annotated with GERP scores
+syn_vars_gerp = GS.remote(config["gcp_rootdir"] + "all_syn_coding_gerp.tsv")
+
+# Filtered synonymous variants annotated with synVep scores
+syn_vars_synvep = GS.remote(config["gcp_rootdir"] + "syn_vars_synvep.tsv")
+
+# Filtered synonymous variants annotated with SpliceAI scores
+syn_vars_spliceai = GS.remote(config["gcp_rootdir"] + "syn_vars_spliceai.tsv")
+# Ungrouped filtered synonymous variants annotated with SpliceAI scores
+syn_vars_spliceai_max = GS.remote(config["gcp_rootdir"] + "syn_vars_spliceai_max.tsv")
+
+# Unannotated synonymous variants
+syn_vcf_path = config["gcp_rootdir"] + "syn_coding.vcf"
+syn_vcf = GS.remote(syn_vcf_path)
+
+# synVep data
+synvep_db = "synvep_database_v1.db"
+synvep_app = "query_prediction.py"
+syn_vars_synvep_raw_path = config["gcp_rootdir"] + "syn_vars_synvep_raw.tsv"
+syn_vars_synvep_raw = GS.remote(syn_vars_synvep_raw_path)
+
+# oRNAment data
+ornament_data = "Homo_sapiens_cDNA_oRNAment.csv.gz"
+
+# LoF metrics (including LOEUF) by gene
+lof_metrics_by_gene_file = "lof_metrics_by_gene.txt"
+
+# Pre-calculated SpliceAI scores (hg19)
+spliceai_scores = GS.remote(config["spliceai_scores_path"])
+
+
+rule all:
+    input:
+        syn_vars_synvep,
+        syn_vars_spliceai,
+        syn_vars_spliceai_max,
+        syn_vars_gerp,
+        syn_vars_constrained,
+
+
+###############################################################################
+#                                 Annotations                                 #
+###############################################################################
+
+
+rule misc_files:
+    output:
+        mutation_ht,
+    run:
+        import hail as hl
+
+        mutation_ht = hl.read_table(config["mutation_rate_ht_path"])
+        mutation_ht.export(output[0])
+
+
+# Export filtered unannotated synonymous variants as VCF
+rule syn_export_vcf:
+    output:
+        syn_vcf,
+    run:
+        import hail as hl
+        from preprocessing import preprocessing
+
+        syn_coding = preprocessing(
+            config["exomes_ht_path"],
+            config["context_ht_path"],
+            config["mutation_rate_ht_path"],
+            {"female": config["female_exomes"], "male": config["male_exomes"]},
+        )
+
+        syn_coding = syn_coding.annotate(
+            info=hl.struct(
+                ref_codon=syn_coding.ref_codon,
+                alt_codon=syn_coding.alt_codon,
+                context=syn_coding.context,
+                ref=syn_coding.ref,
+                alt=syn_coding.alt,
+                methylation_level=syn_coding.methylation_level,
+                mu=syn_coding.mu,
+            )
+        )
+        hl.export_vcf(syn_coding, output[0])
+
+
+# Constrained genes ###########################################################
+
+
+rule download_LOEUF:
+    output:
+        lof_metrics_by_gene_file,
+    shell:
+        """
+        wget -O lof_metrics_by_gene.txt.bgz {config[lof_metrics_by_gene]}
+        gunzip -c lof_metrics_by_gene.txt.bgz > {output[0]}
+        """
+
+
+rule syn_annotate_constrained:
+    input:
+        lof_metrics_by_gene_file,
+    output:
+        syn_vars_constrained,
+    run:
+        import hail as hl
+        from preprocessing import preprocessing
+
+        syn_coding = preprocessing(
+            config["exomes_ht_path"],
+            config["context_ht_path"],
+            config["mutation_rate_ht_path"],
+            {"female": config["female_exomes"], "male": config["male_exomes"]},
+        )
+
+        all_genes = hl.import_table(
+            "file:///home/" + config["gcp_username"] + "/" + input[0]
+            )
+
+            # 30% most constrained
+            genes = all_genes.filter(
+                (all_genes.oe_lof_upper_bin == "0")
+                | (all_genes.oe_lof_upper_bin == "1")
+                | (all_genes.oe_lof_upper_bin == "2")
+            )
+            genes = hl.set(genes.gene.collect())
+
+            syn_coding = syn_coding.annotate(
+                constrained=hl.if_else(
+                    genes.contains(syn_coding.transcript_consequences.gene_symbol),
+                    "Yes",
+                    "No",
+                )
+            )
+
+            syn_constrained = syn_coding.filter(syn_coding.constrained == "Yes")
+
+
+            syn_constrained = syn_constrained.group_by(
+            "ref_codon", "alt_codon", "context", "ref", "alt", "methylation_level", "mu"
+        ).aggregate(
+            variant_count=hl.agg.count(),
+            singleton_count=hl.agg.count_where(syn_constrained.freq[0].AC == 1),
+        )
+
+        syn_constrained.export(output[0])
+
+
+# GERP ########################################################################
+
+
+rule syn_annotate_gerp:
+    output:
+        syn_vars_gerp,
+    run:
+        import hail as hl
+        from preprocessing import preprocessing
+
+        syn_coding = preprocessing(
+            config["exomes_ht_path"],
+            config["context_ht_path"],
+            config["mutation_rate_ht_path"],
+            {"female": config["female_exomes"], "male": config["male_exomes"]},
+            with_gerp=True,
+            with_mutability=False,
+            standard_annotation=False,
+        )
+
+        syn_coding = syn_coding.annotate(
+            ref_codon=syn_coding.transcript_consequences.codons.split("/")[0],
+            alt_codon=syn_coding.transcript_consequences.codons.split("/")[1],
+            AA=syn_coding.transcript_consequences.amino_acids,
+            strand=syn_coding.transcript_consequences.strand,
+            alt=syn_coding.transcript_consequences.variant_allele,
+        )
+
+        syn_coding.select(
+            syn_coding.ref_codon,
+            syn_coding.alt_codon,
+            syn_coding.AA,
+            syn_coding.strand,
+            syn_coding.alt,
+            syn_coding.gerp,
+        ).export(output[0])
+
+
+# SpliceAI ####################################################################
+
+
+rule syn_annotate_spliceai:
+    input:
+        spliceai_scores,
+    output:
+        syn_vars_spliceai,
+    run:
+        import hail as hl
+        from preprocessing import preprocessing
+
+        syn_coding = preprocessing(
+            config["exomes_ht_path"],
+            config["context_ht_path"],
+            config["mutation_rate_ht_path"],
+            {"female": config["female_exomes"], "male": config["male_exomes"]},
+        )
+
+        spliceai = hl.import_vcf(input[0], force_bgz=True)
+        spliceai = spliceai.make_table()
+        spliceai = spliceai[syn_coding.key]
+
+        syn_coding = syn_coding.annotate(
+            DS_AG=hl.if_else(spliceai.info.DS_AG >= 0.5, 1, 0),
+            DS_AL=hl.if_else(spliceai.info.DS_AL >= 0.5, 1, 0),
+            DS_DG=hl.if_else(spliceai.info.DS_DG >= 0.5, 1, 0),
+            DS_DL=hl.if_else(spliceai.info.DS_DL >= 0.5, 1, 0),
+        )
+
+        syn_coding.group_by(
+            "ref_codon",
+            "alt_codon",
+            "context",
+            "ref",
+            "alt",
+            "methylation_level",
+            "mu",
+            "DS_AG",
+            "DS_AL",
+            "DS_DG",
+            "DS_DL",
+        ).aggregate(
+            variant_count=hl.agg.count(),
+            singleton_count=hl.agg.count_where(syn_coding.freq[0].AC == 1),
+        ).export(
+            output[0]
+        )
+
+
+rule syn_annotate_spliceai_max:
+    input:
+        spliceai_scores,
+    output:
+        syn_vars_spliceai_max,
+    run:
+        import hail as hl
+        from preprocessing import preprocessing
+
+        syn_coding = preprocessing(
+            config["exomes_ht_path"],
+            config["context_ht_path"],
+            config["mutation_rate_ht_path"],
+            {"female": config["female_exomes"], "male": config["male_exomes"]},
+        )
+
+        spliceai = hl.import_vcf(input[0], force_bgz=True)
+        spliceai = spliceai.make_table()
+        spliceai = spliceai[syn_coding.key]
+
+        syn_coding = syn_coding.annotate(
+            DS_AG=spliceai.info.DS_AG,
+            DS_AL=spliceai.info.DS_AL,
+            DS_DG=spliceai.info.DS_DG,
+            DS_DL=spliceai.info.DS_DL,
+        )
+
+        syn_coding = syn_coding.annotate(
+            AC=syn_coding.freq[0].AC,
+            strand=syn_coding.transcript_consequences.strand,
+            exon=syn_coding.transcript_consequences.exon,
+            uniparc=syn_coding.transcript_consequences.uniparc,
+            transcript_id=syn_coding.transcript_consequences.transcript_id,
+            trembl=syn_coding.transcript_consequences.trembl,
+            protein_id=syn_coding.transcript_consequences.protein_id,
+            hgvsc=syn_coding.transcript_consequences.hgvsc,
+            gene_symbol=syn_coding.transcript_consequences.gene_symbol,
+            gene_id=syn_coding.transcript_consequences.gene_id,
+            cdna_start=syn_coding.transcript_consequences.cdna_start,
+            cdna_end=syn_coding.transcript_consequences.cdna_end,
+            cds_start=syn_coding.transcript_consequences.cds_start,
+            cds_end=syn_coding.transcript_consequences.cds_end,
+        )
+
+        syn_coding.select(
+            "AC",
+            "strand",
+            "exon",
+            "uniparc",
+            "transcript_id",
+            "trembl",
+            "protein_id",
+            "hgvsc",
+            "gene_symbol",
+            "gene_id",
+            "cdna_start",
+            "cdna_end",
+            "cds_start",
+            "cds_end",
+            "ref_codon",
+            "alt_codon",
+            "context",
+            "ref",
+            "alt",
+            "methylation_level",
+            "mu",
+            "DS_AG",
+            "DS_AL",
+            "DS_DG",
+            "DS_DL",
+        ).export(output[0])
+
+
+# synVep ######################################################################
+
+
+# synVep data and script for annotation
+rule download_synvep:
+    output:
+        synvep_db,
+        synvep_app,
+    shell:
+        """
+        wget -O {output[0]} {config[synvep_db]}
+        git clone {config[synvep_app]}
+        cp ./synvep_local/query_prediction.py .
+        """
+
+
+# Annotate VCF with filtered synonymous variants with synVep scores
+rule syn_annotate_vcf_synvep:
+    input:
+        synvep_app,
+        synvep_db,
+        GS.remote(syn_vcf_path, stay_on_remote=False),
+    output:
+        syn_vars_synvep_raw,
+    shell:
+        """
+        python {input[0]} vcf {input[2]} temp.csv
+        awk -F "," 'BEGIN {{OFS="\t"}} {{print $4, $5, $6, $7, $8, $1, $13}}' temp.csv > temp.tsv
+        gsutil cp ./temp.tsv gs://{syn_vars_synvep_raw_path}
+        """
+
+
+rule syn_annotate_synvep:
+    input:
+        syn_vars_synvep_raw,
+    output:
+        syn_vars_synvep,
+    run:
+        import hail as hl
+        from preprocessing import preprocessing, annotate_quartiles
+
+        syn_coding = preprocessing(
+            config["exomes_ht_path"],
+            config["context_ht_path"],
+            config["mutation_rate_ht_path"],
+            {"female": config["female_exomes"], "male": config["male_exomes"]},
+        )
+
+        synvep = (
+            hl.import_table(
+                input[0],
+                delimiter="\t",
+                missing="",
+                types={"synVep": hl.tfloat64, "genomic_position": hl.tint32},
+            )
+            .select(
+                "ref",
+                "alt",
+                "chr",
+                "genomic_position",
+                "transcript_ID",
+                "synVep",
+            )
+            .key_by("ref", "alt", "chr", "genomic_position", "transcript_ID")
+        )
+
+        syn_coding = syn_coding.annotate(
+            synvep_score=synvep[
+                hl.struct(
+                    ref=syn_coding.ref,
+                    alt=syn_coding.alt,
+                    chr=syn_coding.locus.contig,
+                    genomic_position=syn_coding.locus.position,
+                    transcript_ID=syn_coding.transcript_consequences.transcript_id,
+                )
+            ].synVep
+        )
+
+        syn_coding = annotate_quartiles(syn_coding, "synvep_score").rename(
+            {"quartile": "synvep_quartile"}
+        )
+
+        syn_coding.group_by(
+            "ref_codon",
+            "alt_codon",
+            "context",
+            "ref",
+            "alt",
+            "methylation_level",
+            "mu",
+            "synvep_quartile",
+        ).aggregate(
+            variant_count=hl.agg.count(),
+            singleton_count=hl.agg.count_where(syn_coding.freq[0].AC == 1),
+        ).export(
+            output[0]
+        )
+
+
+# CADD ########################################################################
+
+
+rule syn_annotate_cadd:
+    output:
+        syn_vars_cadd,
+    run:
+        import hail as hl
+        from preprocessing import preprocessing, annotate_quartiles
+
+        syn_coding = preprocessing(
+            config["exomes_ht_path"],
+            config["context_ht_path"],
+            config["mutation_rate_ht_path"],
+            {"female": config["female_exomes"], "male": config["male_exomes"]},
+        )
+
+        # Requires '--requester-pays-allow-annotation-db'
+        cadd = hl.experimental.load_dataset(
+            name="CADD",
+            version="1.6",
+            reference_genome="GRCh37",
+            region="us",
+            cloud="gcp",
+        )
+
+        cadd = cadd[syn_coding.key]
+        syn_coding = syn_coding.annotate(cadd_phred=cadd.PHRED_score)
+
+        syn_coding = annotate_quartiles(syn_coding, "cadd_phred").rename(
+            {"quartile": "cadd_quartile"}
+        )
+
+        syn_coding.group_by(
+            "ref_codon",
+            "alt_codon",
+            "context",
+            "ref",
+            "alt",
+            "methylation_level",
+            "mu",
+            "cadd_quartile",
+        ).aggregate(
+            variant_count=hl.agg.count(),
+            singleton_count=hl.agg.count_where(syn_coding.freq[0].AC == 1),
+        ).export(
+            output[0]
+        )
+
+
+# oRNAment ####################################################################
+
+
+rule download_ornament:
+    output:
+        ornament_data,
+    shell:
+        """
+        wget -O {output[0]} {config[ornament]}
+        """

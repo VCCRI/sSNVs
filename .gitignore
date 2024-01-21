@@ -1,0 +1,4 @@
+*~
+data/testing/
+analysis/testing/
+analysis/.snakemake/
